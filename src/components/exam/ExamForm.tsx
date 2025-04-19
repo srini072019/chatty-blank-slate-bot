@@ -1,4 +1,3 @@
-
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -47,7 +46,7 @@ const examSchema = z.object({
 
 interface ExamFormProps {
   initialData?: {
-    id?: string; // Added id property to fix the error
+    id?: string;
     title?: string;
     description?: string;
     courseId?: string;
@@ -69,6 +68,7 @@ interface ExamFormProps {
   onSubmit: (data: ExamFormData) => void;
   isSubmitting: boolean;
   courseIdFixed?: boolean;
+  isEdit?: boolean; // New prop to distinguish between create and edit modes
 }
 
 const ExamForm = ({
@@ -79,6 +79,7 @@ const ExamForm = ({
   onSubmit,
   isSubmitting,
   courseIdFixed = false,
+  isEdit = false // Default to false for create mode
 }: ExamFormProps) => {
   const [selectedCourseId, setSelectedCourseId] = useState(initialData?.courseId || "");
   const [filteredQuestions, setFilteredQuestions] = useState<Question[]>([]);
@@ -204,7 +205,7 @@ const ExamForm = ({
                 courseIdFixed={courseIdFixed} 
               />
             </div>
-            {selectedCourseId && (
+            {isEdit && selectedCourseId && (
               <ExamCandidatesManager 
                 examId={initialData?.id || ''} 
                 courseId={selectedCourseId} 
@@ -249,6 +250,7 @@ const ExamForm = ({
           setQuestionPool={setQuestionPool}
           watchQuestions={watchQuestions}
           subjects={subjects}
+          showPreview={isEdit} // Only show preview in edit mode
         />
 
         <div className="flex justify-end sticky bottom-0 bg-white py-4 border-t mt-6">
