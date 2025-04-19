@@ -73,7 +73,7 @@ export const useSubjects = (courseId?: string) => {
 
       if (error) throw error;
 
-      await fetchSubjects();
+      await fetchSubjectsWithQuestions();
       toast.success("Subject created successfully");
       return true;
     } catch (error) {
@@ -100,7 +100,7 @@ export const useSubjects = (courseId?: string) => {
 
       if (error) throw error;
 
-      await fetchSubjects();
+      await fetchSubjectsWithQuestions();
       toast.success("Subject updated successfully");
       return true;
     } catch (error) {
@@ -122,7 +122,7 @@ export const useSubjects = (courseId?: string) => {
 
       if (error) throw error;
 
-      await fetchSubjects();
+      await fetchSubjectsWithQuestions();
       toast.success("Subject deleted successfully");
       return true;
     } catch (error) {
@@ -154,6 +154,8 @@ export const useSubjects = (courseId?: string) => {
     createSubject,
     updateSubject,
     deleteSubject,
+    getSubject,
+    getSubjectsByCourse,
     fetchSubjects: fetchSubjectsWithQuestions,
   };
 };
