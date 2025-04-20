@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,7 +35,6 @@ export const useEnrollment = () => {
 
       if (error) throw error;
 
-      // Transform the data to match the Course type
       const courses: Course[] = data
         .filter(item => item.course) // Filter out any null courses
         .map(({ course }) => ({
@@ -58,7 +56,7 @@ export const useEnrollment = () => {
     }
   };
 
-  const enrollParticipants = async (courseId: string, emails: string[]): Promise<EnrollmentResult> => {
+  const enrollParticipants = async (courseId: string, emails: string[]): Promise<{success: boolean; message?: string}> => {
     if (!authState.user) {
       return {
         success: false,
@@ -68,7 +66,6 @@ export const useEnrollment = () => {
 
     setIsLoading(true);
     try {
-      // First, get user IDs for the provided emails
       const { data: users, error: userError } = await supabase
         .from('profiles')
         .select('id')
@@ -83,7 +80,6 @@ export const useEnrollment = () => {
         };
       }
 
-      // Create enrollment records for each user
       const enrollments = users.map(user => ({
         course_id: courseId,
         user_id: user.id,
