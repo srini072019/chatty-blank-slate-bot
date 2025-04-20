@@ -5,6 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Course } from "@/types/course.types";
 
+interface EnrollmentResult {
+  success: boolean;
+  message?: string;
+}
+
 export const useEnrollment = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { authState } = useAuth();
@@ -54,10 +59,12 @@ export const useEnrollment = () => {
   };
 
   // Fixed function to avoid infinite type instantiation
-  const enrollParticipants = async (courseId: string, emails: string[]): Promise<boolean> => {
+  const enrollParticipants = async (courseId: string, emails: string[]): Promise<EnrollmentResult> => {
     if (!authState.user) {
-      toast.error("You must be logged in to enroll participants");
-      return false;
+      return {
+        success: false,
+        message: "You must be logged in to enroll participants"
+      };
     }
 
     setIsLoading(true);
@@ -71,8 +78,10 @@ export const useEnrollment = () => {
       if (userError) throw userError;
 
       if (!users || users.length === 0) {
-        toast.error("No valid users found for the provided emails");
-        return false;
+        return {
+          success: false,
+          message: "No valid users found for the provided emails"
+        };
       }
 
       // Create enrollment records for each user
@@ -89,11 +98,17 @@ export const useEnrollment = () => {
       if (error) throw error;
       
       toast.success("Participants enrolled successfully");
-      return true;
+      return {
+        success: true
+      };
     } catch (error) {
       console.error("Error enrolling participants:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       toast.error("Failed to enroll participants");
-      return false;
+      return {
+        success: false,
+        message: errorMessage
+      };
     } finally {
       setIsLoading(false);
     }
