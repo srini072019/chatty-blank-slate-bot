@@ -1,11 +1,9 @@
-
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Course } from "@/types/course.types";
 
-// Define a clear interface for enrollment results
 interface EnrollmentResult {
   success: boolean;
   message?: string;
@@ -95,9 +93,7 @@ export const useEnrollment = () => {
       if (error) throw error;
       
       toast.success("Participants enrolled successfully");
-      return {
-        success: true
-      };
+      return { success: true };
     } catch (error) {
       console.error("Error enrolling participants:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error";

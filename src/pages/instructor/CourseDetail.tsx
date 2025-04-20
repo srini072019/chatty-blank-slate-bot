@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import InstructorLayout from "@/layouts/InstructorLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Edit, Archive } from "lucide-react";
+import { ArrowLeft, Edit, Archive, UserPlus } from "lucide-react";
 import { useCourses } from "@/hooks/useCourses";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useQuestions } from "@/hooks/useQuestions";
@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ROUTES } from "@/constants/routes";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
+import EnrollCandidatesDialog from "@/components/course/EnrollCandidatesDialog";
 import ParticipantEnrollment from "@/components/course/ParticipantEnrollment";
 
 const CourseDetail = () => {
@@ -27,6 +28,7 @@ const CourseDetail = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEnrollDialogOpen, setIsEnrollDialogOpen] = useState(false);
+  const [isParticipantEnrollDialogOpen, setIsParticipantEnrollDialogOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -110,22 +112,31 @@ const CourseDetail = () => {
               Edit Course
             </Button>
             {course.isPublished && (
-              <Button 
-                variant="outline"
-                className="text-amber-600 border-amber-600 hover:bg-amber-50"
-                onClick={handleUnpublishCourse}
-                disabled={isSubmitting}
-              >
-                <Archive size={16} className="mr-2" />
-                Unpublish
-              </Button>
+              <>
+                <Button 
+                  variant="outline"
+                  className="text-amber-600 border-amber-600 hover:bg-amber-50"
+                  onClick={handleUnpublishCourse}
+                  disabled={isSubmitting}
+                >
+                  <Archive size={16} className="mr-2" />
+                  Unpublish
+                </Button>
+                <Button 
+                  variant="default"
+                  onClick={() => setIsEnrollDialogOpen(true)}
+                >
+                  <UserPlus size={16} className="mr-2" />
+                  Add Candidates
+                </Button>
+                <Button 
+                  variant="default"
+                  onClick={() => setIsParticipantEnrollDialogOpen(true)}
+                >
+                  Add Participants
+                </Button>
+              </>
             )}
-            <Button 
-              variant="default"
-              onClick={() => setIsEnrollDialogOpen(true)}
-            >
-              Add Participants
-            </Button>
           </div>
         </div>
 
@@ -147,34 +158,41 @@ const CourseDetail = () => {
             </Tabs>
           </CardContent>
         </Card>
-      </div>
-      
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Course</DialogTitle>
-            <DialogDescription>
-              Update the details of this course.
-            </DialogDescription>
-          </DialogHeader>
-          <CourseForm 
-            initialData={{
-              title: course.title,
-              description: course.description,
-              imageUrl: course.imageUrl,
-              isPublished: course.isPublished,
-            }}
-            onSubmit={handleUpdateCourse}
-            isSubmitting={isSubmitting}
-          />
-        </DialogContent>
-      </Dialog>
 
-      <ParticipantEnrollment
-        courseId={course.id}
-        isOpen={isEnrollDialogOpen}
-        onClose={() => setIsEnrollDialogOpen(false)}
-      />
+        {/* Add the EnrollCandidatesDialog */}
+        <EnrollCandidatesDialog
+          courseId={course.id}
+          isOpen={isEnrollDialogOpen}
+          onClose={() => setIsEnrollDialogOpen(false)}
+        />
+
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Course</DialogTitle>
+              <DialogDescription>
+                Update the details of this course.
+              </DialogDescription>
+            </DialogHeader>
+            <CourseForm 
+              initialData={{
+                title: course.title,
+                description: course.description,
+                imageUrl: course.imageUrl,
+                isPublished: course.isPublished,
+              }}
+              onSubmit={handleUpdateCourse}
+              isSubmitting={isSubmitting}
+            />
+          </DialogContent>
+        </Dialog>
+
+        <ParticipantEnrollment
+          courseId={course.id}
+          isOpen={isParticipantEnrollDialogOpen}
+          onClose={() => setIsParticipantEnrollDialogOpen(false)}
+        />
+      </div>
     </InstructorLayout>
   );
 };
