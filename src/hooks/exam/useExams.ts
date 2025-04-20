@@ -1,128 +1,74 @@
 
 import { useState, useEffect } from "react";
-import { Exam, ExamFormData, ExamStatus } from "@/types/exam.types";
-import { 
-  fetchExamsFromApi, 
-  createExamInApi, 
-  updateExamInApi, 
-  deleteExamInApi,
-  updateExamStatusInApi 
-} from "./api";
-import { ExamHookResult } from "./types";
-import { Question } from "@/types/question.types";
+import { Exam, ExamStatus } from "@/types/exam.types";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
-export const useExams = (courseId?: string, instructorId?: string): ExamHookResult => {
+interface UseExamsResult {
+  exams: Exam[];
+  isLoading: boolean;
+  error: string | null;
+  fetchExams: (courseId?: string) => Promise<void>;
+}
+
+export const useExams = (userId?: string): UseExamsResult => {
   const [exams, setExams] = useState<Exam[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchExams = async () => {
-    setIsLoading(true);
-    try {
-      const fetchedExams = await fetchExamsFromApi(courseId, instructorId);
-      setExams(fetchedExams);
-    } finally {
-      setIsLoading(false);
+  const fetchExams = async (courseId?: string) => {
+    if (!userId) {
+      setError("User ID is required");
+      return;
     }
-  };
 
-  const createExam = async (data: ExamFormData): Promise<boolean> => {
     setIsLoading(true);
-    try {
-      const examId = await createExamInApi(data);
-      if (examId) {
-        await fetchExams();
-        return true;
-      }
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    setError(null);
 
-  const updateExam = async (id: string, data: ExamFormData): Promise<boolean> => {
-    setIsLoading(true);
     try {
-      const success = await updateExamInApi(id, data);
-      if (success) {
-        await fetchExams();
-      }
-      return success;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const deleteExam = async (id: string): Promise<boolean> => {
-    setIsLoading(true);
-    try {
-      const success = await deleteExamInApi(id);
-      if (success) {
-        await fetchExams();
-      }
-      return success;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const publishExam = async (id: string): Promise<boolean> => {
-    setIsLoading(true);
-    try {
-      const success = await updateExamStatusInApi(id, ExamStatus.PUBLISHED);
-      if (success) {
-        await fetchExams();
-      }
-      return success;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const archiveExam = async (id: string): Promise<boolean> => {
-    setIsLoading(true);
-    try {
-      const success = await updateExamStatusInApi(id, ExamStatus.ARCHIVED);
-      if (success) {
-        await fetchExams();
-      }
-      return success;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const getExamWithQuestions = (id: string, allQuestions: Question[]) => {
-    const exam = exams.find(exam => exam.id === id);
-    let examQuestions: Question[] = [];
-    
-    if (exam) {
-      examQuestions = allQuestions.filter(q => exam.questions.includes(q.id));
+      let query = supabase
+        .from('exams')
+        .select('*')
+        .eq('instructor_id', userId);
       
-      // If shuffle is enabled, we're just showing a preview (not the actual shuffle)
-      if (exam.shuffleQuestions) {
-        // Just for display, not actual exam taking
-        examQuestions = [...examQuestions].sort(() => 0.5 - Math.random());
+      if (courseId) {
+        query = query.eq('course_id', courseId);
       }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      if (data) {
+        const formattedExams: Exam[] = data.map(exam => ({
+          id: exam.id,
+          title: exam.title,
+          description: exam.description || "",
+          courseId: exam.course_id,
+          instructorId: exam.instructor_id,
+          startDate: exam.start_date ? new Date(exam.start_date) : undefined,
+          endDate: exam.end_date ? new Date(exam.end_date) : undefined,
+          timeLimit: exam.time_limit,
+          passingScore: exam.passing_score,
+          shuffleQuestions: exam.shuffle_questions,
+          status: exam.status as ExamStatus,
+          useQuestionPool: exam.use_question_pool || false,
+          questionPool: exam.question_pool || undefined,
+          questions: [],
+          createdAt: new Date(exam.created_at),
+          updatedAt: new Date(exam.updated_at)
+        }));
+
+        setExams(formattedExams);
+      }
+    } catch (err) {
+      console.error("Error fetching exams:", err);
+      setError("Failed to fetch exams");
+      toast.error("Failed to fetch exams");
+    } finally {
+      setIsLoading(false);
     }
-    
-    return { exam, examQuestions };
   };
 
-  useEffect(() => {
-    fetchExams();
-  }, [courseId, instructorId]);
-
-  return {
-    exams,
-    isLoading,
-    createExam,
-    updateExam,
-    deleteExam,
-    publishExam,
-    archiveExam,
-    fetchExams,
-    getExam: (id: string) => exams.find(exam => exam.id === id),
-    getExamsByCourse: (courseId: string) => exams.filter(exam => exam.courseId === courseId),
-    getExamWithQuestions,
-  };
+  return { exams, isLoading, error, fetchExams };
 };

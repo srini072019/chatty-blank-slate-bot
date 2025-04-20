@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useEnrollment } from "@/hooks/useEnrollment";
 import { toast } from "sonner";
@@ -48,13 +49,11 @@ const ParticipantEnrollment = ({ courseId, isOpen, onClose }: ParticipantEnrollm
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Input
+            <Textarea
               placeholder="Enter email addresses (comma-separated)"
               value={emails}
               onChange={(e) => setEmails(e.target.value)}
               className="h-32"
-              type="text"
-              multiline
             />
           </div>
           <div className="flex justify-end gap-2">

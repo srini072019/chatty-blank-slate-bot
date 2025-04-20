@@ -32,16 +32,18 @@ export const useEnrollment = () => {
       if (error) throw error;
 
       // Transform the data to match the Course type
-      const courses: Course[] = data.map(({ course }) => ({
-        id: course.id,
-        title: course.title,
-        description: course.description || "",
-        imageUrl: course.image_url,
-        instructorId: course.instructor_id,
-        isPublished: course.is_published,
-        createdAt: new Date(course.created_at),
-        updatedAt: new Date(course.updated_at)
-      }));
+      const courses: Course[] = data
+        .filter(item => item.course) // Filter out any null courses
+        .map(({ course }) => ({
+          id: course.id,
+          title: course.title,
+          description: course.description || "",
+          imageUrl: course.image_url,
+          instructorId: course.instructor_id,
+          isPublished: course.is_published,
+          createdAt: new Date(course.created_at),
+          updatedAt: new Date(course.updated_at)
+        }));
 
       return courses;
     } catch (error) {
@@ -67,7 +69,7 @@ export const useEnrollment = () => {
 
       if (userError) throw userError;
 
-      if (!users.length) {
+      if (!users || users.length === 0) {
         toast.error("No valid users found for the provided emails");
         return false;
       }
