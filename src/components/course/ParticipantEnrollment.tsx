@@ -1,7 +1,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useEnrollment } from "@/hooks/useEnrollment";
@@ -30,8 +29,8 @@ const ParticipantEnrollment = ({ courseId, isOpen, onClose }: ParticipantEnrollm
       return;
     }
 
-    const success = await enrollParticipants(courseId, emailList);
-    if (success) {
+    const result = await enrollParticipants(courseId, emailList);
+    if (result.success) {
       setEmails("");
       onClose();
     }
