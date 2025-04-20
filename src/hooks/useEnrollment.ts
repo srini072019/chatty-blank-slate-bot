@@ -53,6 +53,7 @@ export const useEnrollment = () => {
     }
   };
 
+  // Fixed function to avoid infinite type instantiation
   const enrollParticipants = async (courseId: string, emails: string[]): Promise<boolean> => {
     if (!authState.user) {
       toast.error("You must be logged in to enroll participants");
