@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,7 +56,6 @@ export const useEnrollment = () => {
     }
   };
 
-  // Using a concrete type definition here to prevent infinite type recursion
   const enrollParticipants = async (courseId: string, emails: string[]): Promise<EnrollmentResult> => {
     if (!authState.user) {
       return {

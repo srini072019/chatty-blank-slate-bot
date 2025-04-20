@@ -59,9 +59,11 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          discontinued_at: string | null
           id: string
           image_url: string | null
           instructor_id: string
+          is_discontinued: boolean | null
           is_published: boolean
           title: string
           updated_at: string
@@ -69,9 +71,11 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          discontinued_at?: string | null
           id?: string
           image_url?: string | null
           instructor_id: string
+          is_discontinued?: boolean | null
           is_published?: boolean
           title: string
           updated_at?: string
@@ -79,9 +83,11 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          discontinued_at?: string | null
           id?: string
           image_url?: string | null
           instructor_id?: string
+          is_discontinued?: boolean | null
           is_published?: boolean
           title?: string
           updated_at?: string
