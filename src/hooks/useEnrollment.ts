@@ -1,9 +1,11 @@
+
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { Course } from "@/types/course.types";
 
+// Define a clear interface for enrollment results
 interface EnrollmentResult {
   success: boolean;
   message?: string;
