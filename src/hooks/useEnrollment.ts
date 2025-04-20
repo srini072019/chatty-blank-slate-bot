@@ -58,7 +58,6 @@ export const useEnrollment = () => {
     }
   };
 
-  // Fixed function to avoid infinite type instantiation by using a concrete return type
   const enrollParticipants = async (courseId: string, emails: string[]): Promise<EnrollmentResult> => {
     if (!authState.user) {
       return {
