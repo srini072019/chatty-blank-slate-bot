@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Exam, ExamFormData, ExamStatus } from "@/types/exam.types";
 import { toast } from "sonner";
@@ -93,7 +94,9 @@ export const createExamInApi = async (data: ExamFormData): Promise<string | null
     }
     
     // Assign exam to all enrolled candidates in the course
-    await assignExamToCandidates(examData.id, data.courseId);
+    if (data.status === 'published') {
+      await assignExamToCandidates(examData.id, data.courseId);
+    }
     
     toast.success("Exam created successfully");
     return examData.id;
@@ -127,11 +130,35 @@ const assignExamToCandidates = async (examId: string, courseId: string) => {
       return;
     }
     
+    // Get exam details to determine initial status
+    const { data: examData, error: examError } = await supabase
+      .from('exams')
+      .select('start_date, end_date')
+      .eq('id', examId)
+      .single();
+      
+    if (examError) {
+      console.error("Error fetching exam details:", examError);
+      throw examError;
+    }
+    
+    // Determine exam status based on dates
+    const now = new Date();
+    const startDate = examData.start_date ? new Date(examData.start_date) : null;
+    
+    // Default to 'available' if no start date or start date is in the past
+    let initialStatus = 'available';
+    
+    // If start date is in the future, set to 'scheduled'
+    if (startDate && startDate > now) {
+      initialStatus = 'scheduled';
+    }
+    
     // Create assignments for each candidate
     const assignments = enrollments.map(enrollment => ({
       exam_id: examId,
       candidate_id: enrollment.user_id,
-      status: 'available',
+      status: initialStatus,
     }));
     
     const { error: assignmentError } = await supabase
@@ -143,7 +170,7 @@ const assignExamToCandidates = async (examId: string, courseId: string) => {
       throw assignmentError;
     }
     
-    console.log("Exam assigned to", assignments.length, "candidates");
+    console.log("Exam assigned to", assignments.length, "candidates with status:", initialStatus);
   } catch (error) {
     console.error("Error in assignExamToCandidates:", error);
     toast.error("Failed to assign exam to candidates");
