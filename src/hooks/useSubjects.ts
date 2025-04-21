@@ -106,12 +106,12 @@ export const useSubjects = (courseId?: string) => {
   const createSubject = async (data: SubjectFormData): Promise<boolean> => {
     setIsLoading(true);
     try {
-      // Insert the subject first
+      // Insert the subject first - note the removal of course_id from the insert
       const { data: newSubject, error: subjectError } = await supabase
         .from('subjects')
         .insert({
           title: data.title,
-          description: data.description,
+          description: data.description
         })
         .select()
         .single();
