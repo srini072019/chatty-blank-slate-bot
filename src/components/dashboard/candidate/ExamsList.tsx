@@ -29,8 +29,10 @@ const ExamsList = () => {
       if (!authState.user?.id) return;
 
       try {
+        setLoading(true);
         console.log("Fetching exams for candidate ID:", authState.user.id);
-        
+
+        // Fetch ALL assignments for this user, and include status
         const { data, error } = await supabase
           .from('exam_candidate_assignments')
           .select(`
@@ -54,24 +56,26 @@ const ExamsList = () => {
           throw error;
         }
 
-        console.log("Raw exam data:", data);
+        console.log("Raw exam assignment data:", data);
 
         // Filter out any null exam values and format the data
-        const formattedExams = data
-          .filter(item => item.exam) 
+        const formattedExams = (data || [])
+          .filter(item => item.exam && item.exam.status !== 'draft') // Show only published/scheduled/completed
           .map(item => ({
             id: item.exam.id,
             title: item.exam.title,
             course: {
-              title: item.exam.course.title
+              title: item.exam.course?.title || "Untitled Course"
             },
             time_limit: item.exam.time_limit,
             end_date: item.exam.end_date,
             status: item.status as 'scheduled' | 'available' | 'completed'
           }));
 
+        // Log what will be displayed
+        console.log("Formatted & filtered exams for candidate:", formattedExams);
+
         setExams(formattedExams);
-        console.log("Formatted exams:", formattedExams);
       } catch (error) {
         console.error('Error fetching exams:', error);
         toast.error('Failed to load exams');
@@ -107,7 +111,7 @@ const ExamsList = () => {
               key={exam.id}
               title={exam.title}
               course={exam.course.title}
-              date={new Date(exam.end_date).toLocaleDateString()}
+              date={exam.end_date ? new Date(exam.end_date).toLocaleDateString() : ""}
               duration={`${exam.time_limit} minutes`}
               status={exam.status}
               examId={exam.id}
