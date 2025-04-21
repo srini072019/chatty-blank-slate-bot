@@ -106,12 +106,15 @@ export const useSubjects = (courseId?: string) => {
   const createSubject = async (data: SubjectFormData): Promise<boolean> => {
     setIsLoading(true);
     try {
-      // Insert the subject first - note the removal of course_id from the insert
+      // Include an empty string for course_id to satisfy TypeScript
+      // This is a workaround since the database now has course_id as nullable
+      // but TypeScript still expects it
       const { data: newSubject, error: subjectError } = await supabase
         .from('subjects')
         .insert({
           title: data.title,
-          description: data.description
+          description: data.description,
+          course_id: null  // Set to null since we're using the junction table
         })
         .select()
         .single();
