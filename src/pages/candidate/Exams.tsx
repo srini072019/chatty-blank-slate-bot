@@ -1,158 +1,132 @@
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { useExams } from "@/hooks/useExams";
+import { useState, useEffect } from "react";
 import CandidateLayout from "@/layouts/CandidateLayout";
-import { format } from "date-fns";
-import { Exam, ExamStatus } from "@/types/exam.types";
-import { Badge } from "@/components/ui/badge";
-import { Clock, FileText, Calendar } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
+import ExamFilterControls from "./exams/ExamFilterControls";
+import ExamGrid from "./exams/ExamGrid";
+
+interface Exam {
+  id: string;
+  title: string;
+  description: string;
+  time_limit: number;
+  questions_count: number;
+  start_date?: string;
+  end_date?: string;
+  status: 'available' | 'scheduled' | 'completed';
+}
 
 const Exams = () => {
-  const navigate = useNavigate();
-  const { exams } = useExams();
+  const { authState } = useAuth();
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "upcoming" | "available" | "past">("available");
-  
-  // Get current date
+
   const now = new Date();
-  
+
+  useEffect(() => {
+    const fetchExams = async () => {
+      if (!authState.user?.id) return;
+
+      try {
+        setLoading(true);
+        console.log("Fetching exams for candidate ID:", authState.user.id);
+        const { data, error } = await supabase
+          .from('exam_candidate_assignments')
+          .select(`
+            status,
+            exam:exams (
+              id,
+              title,
+              description,
+              time_limit,
+              start_date,
+              end_date,
+              exam_questions(count)
+            )
+          `)
+          .eq('candidate_id', authState.user.id);
+
+        if (error) {
+          console.error("Error fetching exams:", error);
+          toast.error("Failed to load exams");
+          throw error;
+        }
+
+        console.log("Raw exam data:", data);
+
+        // Process the data
+        const processedExams = data
+          .filter(item => item.exam) // Filter out null exams
+          .map(item => ({
+            id: item.exam.id,
+            title: item.exam.title,
+            description: item.exam.description || "",
+            time_limit: item.exam.time_limit,
+            questions_count: item.exam.exam_questions?.length || 0,
+            start_date: item.exam.start_date,
+            end_date: item.exam.end_date,
+            status: item.status as 'available' | 'scheduled' | 'completed'
+          }));
+
+        setExams(processedExams);
+        console.log("Processed exams:", processedExams);
+      } catch (error) {
+        console.error("Error fetching exams:", error);
+        toast.error("Failed to load exams");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExams();
+  }, [authState.user?.id]);
+
   const filteredExams = exams
-    .filter(exam => exam.status === ExamStatus.PUBLISHED)
     .filter(exam => {
       if (filter === "all") return true;
-      
-      const startDate = exam.startDate ? new Date(exam.startDate) : null;
-      const endDate = exam.endDate ? new Date(exam.endDate) : null;
-      
+
+      const startDate = exam.start_date ? new Date(exam.start_date) : null;
+      const endDate = exam.end_date ? new Date(exam.end_date) : null;
+
       if (filter === "upcoming") {
         return startDate && startDate > now;
       }
-      
+
       if (filter === "available") {
         const isStarted = !startDate || startDate <= now;
         const isNotEnded = !endDate || endDate >= now;
-        return isStarted && isNotEnded;
+        return isStarted && isNotEnded && exam.status === 'available';
       }
-      
+
       if (filter === "past") {
-        return endDate && endDate < now;
+        return (endDate && endDate < now) || exam.status === 'completed';
       }
-      
+
       return true;
     });
 
-  const getExamStatusBadge = (exam: Exam) => {
-    const startDate = exam.startDate ? new Date(exam.startDate) : null;
-    const endDate = exam.endDate ? new Date(exam.endDate) : null;
-    
-    if (startDate && startDate > now) {
-      return <Badge className="bg-yellow-500">Upcoming</Badge>;
-    }
-    
-    if (endDate && endDate < now) {
-      return <Badge className="bg-gray-500">Expired</Badge>;
-    }
-    
-    return <Badge className="bg-green-500">Available</Badge>;
-  };
+  if (loading) {
+    return (
+      <CandidateLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </CandidateLayout>
+    );
+  }
 
   return (
     <CandidateLayout>
       <div className="container mx-auto py-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Available Exams</h1>
-          <div className="flex space-x-2">
-            <Button 
-              variant={filter === "all" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilter("all")}
-            >
-              All
-            </Button>
-            <Button 
-              variant={filter === "upcoming" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilter("upcoming")}
-            >
-              Upcoming
-            </Button>
-            <Button 
-              variant={filter === "available" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilter("available")}
-            >
-              Available
-            </Button>
-            <Button 
-              variant={filter === "past" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilter("past")}
-            >
-              Past
-            </Button>
-          </div>
+          <h1 className="text-2xl font-bold">Your Exams</h1>
+          <ExamFilterControls filter={filter} setFilter={setFilter} />
         </div>
-        
-        {filteredExams.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center">
-              <p className="text-muted-foreground">No exams found for the selected filter.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredExams.map((exam) => (
-              <Card key={exam.id} className="flex flex-col">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <CardTitle>{exam.title}</CardTitle>
-                    {getExamStatusBadge(exam)}
-                  </div>
-                  <CardDescription>{exam.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <div className="space-y-3">
-                    <div className="flex items-center text-sm">
-                      <Clock className="mr-2 h-4 w-4" />
-                      <span>Time Limit: {exam.timeLimit} minutes</span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <FileText className="mr-2 h-4 w-4" />
-                      <span>Questions: {exam.questions.length}</span>
-                    </div>
-                    {exam.startDate && (
-                      <div className="flex items-center text-sm">
-                        <Calendar className="mr-2 h-4 w-4" />
-                        <span>
-                          {format(new Date(exam.startDate), "MMM dd, yyyy")}
-                          {exam.endDate && ` - ${format(new Date(exam.endDate), "MMM dd, yyyy")}`}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-                <CardFooter className="border-t pt-4">
-                  <Button 
-                    className="w-full" 
-                    onClick={() => navigate(`/candidate/exams/${exam.id}`)}
-                    disabled={
-                      (exam.startDate && new Date(exam.startDate) > now) || 
-                      (exam.endDate && new Date(exam.endDate) < now)
-                    }
-                  >
-                    {(exam.startDate && new Date(exam.startDate) > now) 
-                      ? "Not Available Yet"
-                      : (exam.endDate && new Date(exam.endDate) < now)
-                        ? "Exam Expired" 
-                        : "Take Exam"}
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        )}
+        <ExamGrid exams={filteredExams} now={now} />
       </div>
     </CandidateLayout>
   );

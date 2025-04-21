@@ -1,6 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { CalendarCheck, Clock } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface UpcomingExamProps {
   title: string;
@@ -8,9 +9,10 @@ interface UpcomingExamProps {
   date: string;
   duration: string;
   status: 'scheduled' | 'available' | 'completed';
+  examId: string;
 }
 
-const UpcomingExam = ({ title, course, date, duration, status }: UpcomingExamProps) => {
+const UpcomingExam = ({ title, course, date, duration, status, examId }: UpcomingExamProps) => {
   const getStatusBadge = () => {
     switch (status) {
       case 'available':
@@ -45,16 +47,19 @@ const UpcomingExam = ({ title, course, date, duration, status }: UpcomingExamPro
       </div>
       <div className="mt-4">
         {status === 'available' ? (
-          <Button className="w-full bg-assessify-primary hover:bg-assessify-primary/90">
-            Take Exam
+          <Button 
+            className="w-full bg-assessify-primary hover:bg-assessify-primary/90"
+            asChild
+          >
+            <Link to={`/candidate/exams/${examId}`}>Take Exam</Link>
           </Button>
         ) : status === 'scheduled' ? (
-          <Button variant="outline" className="w-full">
-            View Details
+          <Button variant="outline" className="w-full" asChild>
+            <Link to={`/candidate/exams/${examId}`}>View Details</Link>
           </Button>
         ) : (
-          <Button variant="outline" className="w-full">
-            View Results
+          <Button variant="outline" className="w-full" asChild>
+            <Link to={`/candidate/exams/${examId}`}>View Results</Link>
           </Button>
         )}
       </div>

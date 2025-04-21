@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
@@ -36,7 +35,8 @@ export const useEnrollment = () => {
 
       if (error) throw error;
 
-      const courses: Course[] = data
+      // Ensure data is an array before mapping
+      const courses: Course[] = (data || [])
         .filter(item => item.course) // Filter out any null courses
         .map(({ course }) => ({
           id: course.id,
@@ -65,36 +65,60 @@ export const useEnrollment = () => {
       };
     }
 
+    if (!emails || emails.length === 0) {
+      return {
+        success: false,
+        message: "No emails provided for enrollment"
+      };
+    }
+
     setIsLoading(true);
     try {
-      const { data: users, error: userError } = await supabase
-        .from('profiles')
-        .select('id')
+      console.log("Enrolling participants with emails:", emails);
+      
+      // Query eligible_candidates view which contains user emails
+      const { data: candidates, error: candidatesError } = await supabase
+        .from('eligible_candidates')
+        .select('id, display_name, email')
         .in('email', emails);
 
-      if (userError) throw userError;
+      if (candidatesError) {
+        console.error("Error fetching candidates:", candidatesError);
+        throw candidatesError;
+      }
 
-      if (!users || users.length === 0) {
+      // Ensure candidates is an array
+      if (!candidates || !Array.isArray(candidates) || candidates.length === 0) {
         return {
           success: false,
           message: "No valid users found for the provided emails"
         };
       }
 
-      const enrollments = users.map(user => ({
+      console.log("Found candidates:", candidates);
+
+      // Create enrollment records for each user
+      const enrollments = candidates.map(candidate => ({
         course_id: courseId,
-        user_id: user.id,
-        enrolled_by: authState.user!.id
+        user_id: candidate.id,
+        enrolled_by: authState.user!.id,
+        enrolled_at: new Date().toISOString()
       }));
 
-      const { error } = await supabase
+      const { error: enrollmentError } = await supabase
         .from('course_enrollments')
-        .insert(enrollments);
+        .upsert(enrollments, { onConflict: 'user_id,course_id' });
 
-      if (error) throw error;
+      if (enrollmentError) {
+        console.error("Error creating enrollments:", enrollmentError);
+        throw enrollmentError;
+      }
       
-      toast.success("Participants enrolled successfully");
-      return { success: true };
+      toast.success(`Successfully enrolled ${candidates.length} participant(s)`);
+      return { 
+        success: true,
+        message: `Successfully enrolled ${candidates.length} participant(s)`
+      };
     } catch (error) {
       console.error("Error enrolling participants:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -107,6 +131,34 @@ export const useEnrollment = () => {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!authState.user?.id) return;
+
+    // Subscribe to changes in course enrollments
+    const channel = supabase
+      .channel('enrollment-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'course_enrollments',
+          filter: `user_id=eq.${authState.user.id}`
+        },
+        async () => {
+          // Refresh the enrolled courses data
+          const courses = await getEnrolledCourses();
+          // You'll need to implement a callback to update the courses in the UI
+          console.log('Course enrollments updated:', courses);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [authState.user?.id]);
 
   return {
     isLoading,
