@@ -47,8 +47,7 @@ const ExamsList = () => {
               )
             )
           `)
-          .eq('candidate_id', authState.user.id)
-          .limit(5); // Only show 5 most recent exams
+          .eq('candidate_id', authState.user.id);
 
         if (error) {
           console.error('Error fetching exams:', error);

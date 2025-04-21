@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -148,9 +149,8 @@ export const useEnrollment = () => {
         },
         async () => {
           // Refresh the enrolled courses data
-          const courses = await getEnrolledCourses();
-          // You'll need to implement a callback to update the courses in the UI
-          console.log('Course enrollments updated:', courses);
+          await getEnrolledCourses();
+          // No need for callback reference that could cause circular dependency
         }
       )
       .subscribe();

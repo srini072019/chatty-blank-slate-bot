@@ -34,6 +34,7 @@ const Exams = () => {
       try {
         setLoading(true);
         console.log("Fetching exams for candidate ID:", authState.user.id);
+        
         const { data, error } = await supabase
           .from('exam_candidate_assignments')
           .select(`
