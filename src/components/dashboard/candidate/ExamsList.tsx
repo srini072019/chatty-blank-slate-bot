@@ -60,7 +60,7 @@ const ExamsList = () => {
 
         // Filter out any null exam values and format the data
         const formattedExams = (data || [])
-          .filter(item => item.exam && item.exam.status !== 'draft') // Show only published/scheduled/completed
+          .filter(item => item.exam && item.exam_id)
           .map(item => ({
             id: item.exam.id,
             title: item.exam.title,
