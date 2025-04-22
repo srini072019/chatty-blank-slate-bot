@@ -93,7 +93,7 @@ export const createExamInApi = async (data: ExamFormData): Promise<string | null
       }
     }
     
-    // Assign exam to all enrolled candidates in the course
+    // Assign exam to all enrolled candidates in the course if published
     if (data.status === 'published') {
       await assignExamToCandidates(examData.id, data.courseId);
     }
@@ -249,6 +249,11 @@ export const updateExamInApi = async (id: string, data: ExamFormData): Promise<b
         .insert(examQuestions);
         
       if (questionsError) throw questionsError;
+    }
+
+    // If publishing the exam, make sure to assign to candidates
+    if (data.status === ExamStatus.PUBLISHED) {
+      await assignExamToCandidates(id, data.courseId);
     }
     
     toast.success("Exam updated successfully");

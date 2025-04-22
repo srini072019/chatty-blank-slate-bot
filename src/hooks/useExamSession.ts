@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { ExamSession, ExamSessionStatus, ExamAnswer, ExamResult } from "@/types/exam-session.types";
+import { ExamSession, ExamSessionStatus, ExamResult } from "@/types/exam-session.types";
 import { Exam } from "@/types/exam.types";
 import { Question } from "@/types/question.types";
 import { v4 as uuidv4 } from "uuid";

@@ -13,6 +13,16 @@ export interface ExamSession {
   passed?: boolean;
   timeRemaining?: number;
   isCompleted?: boolean;
+  currentQuestionIndex: number;
+  expiresAt: Date;
+  status: ExamSessionStatus;
+  timeTaken?: number;
+}
+
+export enum ExamSessionStatus {
+  IN_PROGRESS = 'in_progress',
+  COMPLETED = 'completed',
+  EXPIRED = 'expired'
 }
 
 export interface ExamSessionState {
@@ -26,4 +36,28 @@ export interface ExamSessionActions {
   submitAnswer: (questionId: string, selectedOptions: string[]) => void;
   finishExam: () => Promise<boolean>;
   updateTimeRemaining: (timeRemaining: number) => void;
+}
+
+export interface ExamAnswer {
+  questionId: string;
+  selectedOptions: string[];
+}
+
+export interface ExamResult {
+  id: string;
+  examSessionId: string;
+  candidateId: string;
+  examId: string;
+  score: number;
+  passed: boolean;
+  totalQuestions: number;
+  correctAnswers: number;
+  timeTaken: number;
+  submittedAt: Date;
+  detailedResults: {
+    questionId: string;
+    correct: boolean;
+    selectedOptions: string[];
+    correctOptions: string[];
+  }[];
 }
