@@ -70,7 +70,10 @@ export const createExamInApi = async (data: ExamFormData): Promise<string | null
       .select()
       .single();
 
-    if (examError) throw examError;
+    if (examError) {
+      console.error("Error creating exam:", examError);
+      throw examError;
+    }
     
     console.log("Exam created:", examData);
     
@@ -90,12 +93,16 @@ export const createExamInApi = async (data: ExamFormData): Promise<string | null
       if (questionsError) {
         console.error("Error adding questions to exam:", questionsError);
         throw questionsError;
+      } else {
+        console.log(`Successfully added ${examQuestions.length} questions to exam`);
       }
     }
     
     // Assign exam to all enrolled candidates in the course if published
     if (data.status === 'published') {
       await assignExamToCandidates(examData.id, data.courseId);
+    } else {
+      console.log("Exam is not published, skipping candidate assignment");
     }
     
     toast.success("Exam created successfully");
