@@ -123,9 +123,9 @@ const assignExamToCandidates = async (examId: string, courseId: string) => {
       throw enrollmentsError;
     }
     
-    console.log("Found enrollments:", enrollments);
+    console.log(`Found ${enrollments?.length || 0} enrollments for course:`, courseId);
     
-    if (enrollments.length === 0) {
+    if (!enrollments || enrollments.length === 0) {
       console.log("No candidates enrolled in this course");
       return;
     }
@@ -161,16 +161,44 @@ const assignExamToCandidates = async (examId: string, courseId: string) => {
       status: initialStatus,
     }));
     
+    console.log("Creating assignments with status:", initialStatus, "for candidates:", 
+      enrollments.map(e => e.user_id));
+    
+    // First check if assignments already exist to avoid duplicates
+    const { data: existingAssignments, error: checkError } = await supabase
+      .from('exam_candidate_assignments')
+      .select('candidate_id')
+      .eq('exam_id', examId)
+      .in('candidate_id', enrollments.map(e => e.user_id));
+      
+    if (checkError) {
+      console.error("Error checking existing assignments:", checkError);
+      throw checkError;
+    }
+    
+    // Filter out candidates that already have assignments
+    const existingCandidateIds = existingAssignments?.map(a => a.candidate_id) || [];
+    const newAssignments = assignments.filter(
+      a => !existingCandidateIds.includes(a.candidate_id)
+    );
+    
+    if (newAssignments.length === 0) {
+      console.log("All candidates already have assignments for this exam");
+      return;
+    }
+    
+    console.log(`Creating ${newAssignments.length} new assignments`);
+    
     const { error: assignmentError } = await supabase
       .from('exam_candidate_assignments')
-      .insert(assignments);
+      .insert(newAssignments);
     
     if (assignmentError) {
       console.error("Error assigning exam to candidates:", assignmentError);
       throw assignmentError;
     }
     
-    console.log("Exam assigned to", assignments.length, "candidates with status:", initialStatus);
+    console.log(`Exam successfully assigned to ${newAssignments.length} new candidates`);
   } catch (error) {
     console.error("Error in assignExamToCandidates:", error);
     toast.error("Failed to assign exam to candidates");
