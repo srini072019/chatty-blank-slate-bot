@@ -74,7 +74,8 @@ const Exams = () => {
             start_date,
             end_date
           `)
-          .in('id', examIds);
+          .in('id', examIds)
+          .eq('status', 'published'); // Only fetch published exams
           
         if (examError) {
           console.error("Error fetching exams:", examError);

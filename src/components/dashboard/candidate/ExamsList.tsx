@@ -68,11 +68,12 @@ const ExamsList = () => {
             title,
             time_limit,
             end_date,
-            course:courses (
+            course:course_id (
               title
             )
           `)
-          .in('id', examIds);
+          .in('id', examIds)
+          .eq('status', 'published'); // Only fetch published exams
 
         if (examError) {
           console.error('Error fetching exam details:', examError);

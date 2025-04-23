@@ -35,48 +35,87 @@ export const useExam = (
         setIsLoading(true);
         
         // First, get the exam details
-        const { exam: examData, examQuestions: examQuestionsList } = getExamWithQuestions(examId, questions);
+        const { data: examData, error: examError } = await supabase
+          .from('exams')
+          .select('*')
+          .eq('id', examId)
+          .single();
+          
+        if (examError) {
+          console.error("Error fetching exam:", examError);
+          setError("Exam not found");
+          toast.error("Exam not found");
+          setIsLoading(false);
+          return;
+        }
         
         if (!examData) {
           console.error(`Exam not found with ID: ${examId}`);
           setError("Exam not found");
           toast.error("Exam not found");
+          setIsLoading(false);
           return;
         }
         
-        // If no questions are associated with the exam yet, try to fetch from the database directly
-        if (examQuestionsList.length === 0) {
-          console.log("No questions found in local state, fetching from database...");
+        // Transform exam data to match our type
+        const transformedExam: Exam = {
+          id: examData.id,
+          title: examData.title,
+          description: examData.description || "",
+          courseId: examData.course_id,
+          instructorId: examData.instructor_id,
+          timeLimit: examData.time_limit,
+          passingScore: examData.passing_score,
+          shuffleQuestions: examData.shuffle_questions,
+          status: examData.status,
+          questions: [],
+          createdAt: new Date(examData.created_at),
+          updatedAt: new Date(examData.updated_at),
+          startDate: examData.start_date ? new Date(examData.start_date) : undefined,
+          endDate: examData.end_date ? new Date(examData.end_date) : undefined,
+          useQuestionPool: examData.use_question_pool,
+          questionPool: examData.question_pool ? JSON.parse(String(examData.question_pool)) : undefined,
+        };
+        
+        // Fetch question IDs from exam_questions table
+        const { data: questionLinks, error: questionsError } = await supabase
+          .from('exam_questions')
+          .select('question_id')
+          .eq('exam_id', examId);
+            
+        if (questionsError) {
+          console.error("Error fetching exam questions:", questionsError);
+        }
+        
+        let questionIds: string[] = [];
+        let foundQuestions: Question[] = [];
+        
+        if (questionLinks && questionLinks.length > 0) {
+          console.log("Found question links in database:", questionLinks);
           
-          // Fetch question IDs from exam_questions table
-          const { data: questionLinks, error: questionsError } = await supabase
-            .from('exam_questions')
-            .select('question_id')
-            .eq('exam_id', examId);
-            
-          if (questionsError) {
-            console.error("Error fetching exam questions:", questionsError);
-          } else if (questionLinks && questionLinks.length > 0) {
-            console.log("Found question links in database:", questionLinks);
-            
-            // Extract question IDs
-            const questionIds = questionLinks.map(q => q.question_id);
-            
-            // Fetch corresponding question data
-            const questionsFromDB = questions.filter(q => questionIds.includes(q.id));
-            console.log(`Found ${questionsFromDB.length} questions from database`);
-            
-            setExam(examData);
-            setExamQuestions(questionsFromDB);
-            setError(null);
-            setIsLoading(false);
-            return;
+          // Extract question IDs and update the exam object
+          questionIds = questionLinks.map(q => q.question_id);
+          transformedExam.questions = questionIds;
+          
+          // Find matching questions in our questions array
+          foundQuestions = questions.filter(q => questionIds.includes(q.id));
+          console.log(`Found ${foundQuestions.length} questions from database`);
+        } else {
+          console.log("No questions found in database for this exam");
+        }
+        
+        // Try to get questions from the provided getExamWithQuestions function as a fallback
+        if (foundQuestions.length === 0 && transformedExam) {
+          const { examQuestions: fallbackQuestions } = getExamWithQuestions(examId, questions);
+          if (fallbackQuestions.length > 0) {
+            console.log(`Found ${fallbackQuestions.length} questions from local state`);
+            foundQuestions = fallbackQuestions;
           }
         }
 
-        console.log(`Loaded exam: ${examData.title} with ${examQuestionsList.length} questions`);
-        setExam(examData);
-        setExamQuestions(examQuestionsList);
+        console.log(`Loaded exam: ${transformedExam.title} with ${foundQuestions.length} questions`);
+        setExam(transformedExam);
+        setExamQuestions(foundQuestions);
         setError(null);
       } catch (error) {
         console.error("Error loading exam:", error);

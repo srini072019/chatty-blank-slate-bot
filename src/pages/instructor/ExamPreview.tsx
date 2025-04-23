@@ -6,17 +6,25 @@ import InstructorLayout from "@/layouts/InstructorLayout";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import ExamPage from "@/pages/candidate/ExamPage";
+import { useEffect } from "react";
 
 const ExamPreview = () => {
   const { examId } = useParams<{ examId: string }>();
   const navigate = useNavigate();
   const { questions } = useQuestions();
-  const { getExamWithQuestions } = useExams();
+  const { getExamWithQuestions, fetchExams } = useExams();
   const { exam, examQuestions, isLoading, error } = useExam(
     examId,
     getExamWithQuestions,
     questions
   );
+
+  // Ensure we have the most up-to-date exam data
+  useEffect(() => {
+    if (examId) {
+      fetchExams();
+    }
+  }, [examId, fetchExams]);
 
   console.log("ExamPreview - exam:", exam);
   console.log("ExamPreview - examQuestions:", examQuestions);
