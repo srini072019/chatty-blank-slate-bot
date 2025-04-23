@@ -16,14 +16,14 @@ interface Exam {
   questions_count: number;
   start_date?: string;
   end_date?: string;
-  status: 'available' | 'scheduled' | 'completed';
+  status: 'available' | 'scheduled' | 'completed' | 'pending';
 }
 
 const Exams = () => {
   const { authState } = useAuth();
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "upcoming" | "available" | "past">("available");
+  const [filter, setFilter] = useState<"all" | "upcoming" | "available" | "past">("all");
 
   const now = new Date();
 
@@ -61,8 +61,9 @@ const Exams = () => {
         
         // Extract exam IDs
         const examIds = assignments.map(a => a.exam_id);
+        console.log("Exam IDs to fetch:", examIds);
         
-        // Fetch exam details
+        // Fetch exam details with question counts
         const { data: examData, error: examError } = await supabase
           .from('exams')
           .select(`
@@ -71,8 +72,7 @@ const Exams = () => {
             description,
             time_limit,
             start_date,
-            end_date,
-            exam_questions(count)
+            end_date
           `)
           .in('id', examIds);
           
@@ -83,23 +83,42 @@ const Exams = () => {
         }
 
         console.log("Raw exam data:", examData);
-
+        
+        // Get question counts for each exam
+        const questionsPromises = examIds.map(async (examId) => {
+          const { data: questionsData, error: questionsError } = await supabase
+            .from('exam_questions')
+            .select('question_id')
+            .eq('exam_id', examId);
+            
+          if (questionsError) {
+            console.error(`Error fetching questions for exam ${examId}:`, questionsError);
+            return { examId, count: 0 };
+          }
+          
+          return { examId, count: questionsData?.length || 0 };
+        });
+        
+        const questionCounts = await Promise.all(questionsPromises);
+        console.log("Question counts:", questionCounts);
+        
         // Process the data
         const processedExams = examData
           .filter(item => item) // Filter out null exams
           .map(item => {
             // Find the corresponding assignment to get status
             const assignment = assignments.find(a => a.exam_id === item.id);
+            const questionCount = questionCounts.find(q => q.examId === item.id)?.count || 0;
             
             return {
               id: item.id,
               title: item.title,
               description: item.description || "",
               time_limit: item.time_limit,
-              questions_count: item.exam_questions?.length || 0,
+              questions_count: questionCount,
               start_date: item.start_date,
               end_date: item.end_date,
-              status: assignment?.status as 'available' | 'scheduled' | 'completed'
+              status: assignment?.status as 'available' | 'scheduled' | 'completed' | 'pending'
             };
           });
 
@@ -130,7 +149,7 @@ const Exams = () => {
       if (filter === "available") {
         const isStarted = !startDate || startDate <= now;
         const isNotEnded = !endDate || endDate >= now;
-        return isStarted && isNotEnded && exam.status === 'available';
+        return (isStarted && isNotEnded && (exam.status === 'available' || exam.status === 'pending'));
       }
 
       if (filter === "past") {
