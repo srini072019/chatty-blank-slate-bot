@@ -40,7 +40,7 @@ export const updateExamInApi = async (id: string, data: ExamFormData): Promise<b
       const examQuestions = data.questions.map((questionId, index) => ({
         exam_id: id,
         question_id: questionId,
-        order_number: index + 1,
+        order_number: index + 1 // Maintain question order
       }));
       
       const { error: questionsError } = await supabase
