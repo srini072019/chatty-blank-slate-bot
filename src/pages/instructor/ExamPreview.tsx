@@ -78,7 +78,6 @@ const ExamPreview = () => {
           </p>
         </div>
         
-        {/* Pass the necessary props to ExamPage */}
         <ExamPage 
           isPreview={true} 
           previewExamId={exam.id}

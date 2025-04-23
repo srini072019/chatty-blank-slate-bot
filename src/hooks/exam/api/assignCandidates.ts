@@ -7,6 +7,18 @@ interface AssignmentResult {
   message?: string;
 }
 
+interface Assignment {
+  exam_id: string;
+  candidate_id: string;
+  status: 'pending' | 'scheduled' | 'available' | 'completed';
+  assigned_at: string;
+}
+
+/**
+ * Assigns an exam to all candidates enrolled in the specified course.
+ * If the exam is published, sets the status to 'available' or 'scheduled' based on start date.
+ * Otherwise, sets the status to 'pending'.
+ */
 export const assignExamToCandidates = async (
   examId: string, 
   courseId: string, 
@@ -62,7 +74,7 @@ export const assignExamToCandidates = async (
     
     console.log(`Using initial assignment status: ${initialStatus}`);
     
-    // First check if assignments already exist to avoid duplicates
+    // Check if assignments already exist to avoid duplicates
     const { data: existingAssignments, error: checkError } = await supabase
       .from('exam_candidate_assignments')
       .select('candidate_id')
@@ -77,7 +89,7 @@ export const assignExamToCandidates = async (
     const existingCandidateIds = existingAssignments?.map(a => a.candidate_id) || [];
     console.log("Existing assignment candidate IDs:", existingCandidateIds);
     
-    const newAssignments = enrollments
+    const newAssignments: Assignment[] = enrollments
       .filter(e => !existingCandidateIds.includes(e.user_id))
       .map(enrollment => ({
         exam_id: examId,
@@ -115,49 +127,41 @@ export const assignExamToCandidates = async (
     
     console.log(`Creating ${newAssignments.length} new assignments with status: ${initialStatus}`);
     
-    // Try batch insert with detailed logging
-    try {
-      const { data, error: assignmentError } = await supabase
-        .from('exam_candidate_assignments')
-        .insert(newAssignments);
-      
-      if (assignmentError) {
-        console.error("Error assigning exam to candidates:", assignmentError);
-        throw assignmentError;
-      }
-      
-      console.log(`Successfully assigned exam to ${newAssignments.length} new candidates`);
-      
-      // If we're publishing, also update any existing assignments
-      if (published && existingCandidateIds.length > 0) {
-        const { error: updateError } = await supabase
-          .from('exam_candidate_assignments')
-          .update({ status: initialStatus })
-          .eq('exam_id', examId)
-          .in('candidate_id', existingCandidateIds);
-          
-        if (updateError) {
-          console.error("Error updating existing assignments:", updateError);
-          return { 
-            success: true, 
-            message: `Assigned to ${newAssignments.length} new candidates but failed to update existing ones` 
-          };
-        }
-        
-        console.log(`Updated ${existingCandidateIds.length} existing assignments to status: ${initialStatus}`);
-      }
-      
-      return { 
-        success: true,
-        message: `Exam assigned to ${newAssignments.length} candidates` 
-      };
-    } catch (error) {
-      console.error("Error in exam assignment:", error);
-      return { 
-        success: false, 
-        message: `Failed to assign exam to candidates: ${(error as Error).message}` 
-      };
+    // Insert new assignments
+    const { error: assignmentError } = await supabase
+      .from('exam_candidate_assignments')
+      .insert(newAssignments);
+    
+    if (assignmentError) {
+      console.error("Error assigning exam to candidates:", assignmentError);
+      throw assignmentError;
     }
+    
+    console.log(`Successfully assigned exam to ${newAssignments.length} new candidates`);
+    
+    // If we're publishing, also update any existing assignments
+    if (published && existingCandidateIds.length > 0) {
+      const { error: updateError } = await supabase
+        .from('exam_candidate_assignments')
+        .update({ status: initialStatus })
+        .eq('exam_id', examId)
+        .in('candidate_id', existingCandidateIds);
+        
+      if (updateError) {
+        console.error("Error updating existing assignments:", updateError);
+        return { 
+          success: true, 
+          message: `Assigned to ${newAssignments.length} new candidates but failed to update existing ones` 
+        };
+      }
+      
+      console.log(`Updated ${existingCandidateIds.length} existing assignments to status: ${initialStatus}`);
+    }
+    
+    return { 
+      success: true,
+      message: `Exam assigned to ${newAssignments.length} candidates` 
+    };
   } catch (error) {
     console.error("Error in assignExamToCandidates:", error);
     return { 

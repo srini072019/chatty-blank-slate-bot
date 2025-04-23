@@ -12,6 +12,44 @@ interface UseExamResult {
   error: string | null;
 }
 
+interface ExamData {
+  id: string;
+  title: string;
+  description: string | null;
+  course_id: string;
+  instructor_id: string;
+  time_limit: number;
+  passing_score: number;
+  shuffle_questions: boolean;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  start_date: string | null;
+  end_date: string | null;
+  use_question_pool: boolean | null;
+  question_pool: string | null;
+}
+
+// Transform database exam data to our application type
+const transformExamData = (examData: ExamData): Exam => ({
+  id: examData.id,
+  title: examData.title,
+  description: examData.description || "",
+  courseId: examData.course_id,
+  instructorId: examData.instructor_id,
+  timeLimit: examData.time_limit,
+  passingScore: examData.passing_score,
+  shuffleQuestions: examData.shuffle_questions,
+  status: examData.status as ExamStatus,
+  questions: [],
+  createdAt: new Date(examData.created_at),
+  updatedAt: new Date(examData.updated_at),
+  startDate: examData.start_date ? new Date(examData.start_date) : undefined,
+  endDate: examData.end_date ? new Date(examData.end_date) : undefined,
+  useQuestionPool: examData.use_question_pool ?? false,
+  questionPool: examData.question_pool ? JSON.parse(String(examData.question_pool)) : undefined,
+});
+
 export const useExam = (
   examId: string | undefined,
   getExamWithQuestions: (id: string, questions: Question[]) => { exam: Exam | null; examQuestions: Question[] },
@@ -58,30 +96,14 @@ export const useExam = (
         }
         
         // Transform exam data to match our type
-        const transformedExam: Exam = {
-          id: examData.id,
-          title: examData.title,
-          description: examData.description || "",
-          courseId: examData.course_id,
-          instructorId: examData.instructor_id,
-          timeLimit: examData.time_limit,
-          passingScore: examData.passing_score,
-          shuffleQuestions: examData.shuffle_questions,
-          status: examData.status as ExamStatus, // Cast string to ExamStatus enum
-          questions: [],
-          createdAt: new Date(examData.created_at),
-          updatedAt: new Date(examData.updated_at),
-          startDate: examData.start_date ? new Date(examData.start_date) : undefined,
-          endDate: examData.end_date ? new Date(examData.end_date) : undefined,
-          useQuestionPool: examData.use_question_pool,
-          questionPool: examData.question_pool ? JSON.parse(String(examData.question_pool)) : undefined,
-        };
+        const transformedExam = transformExamData(examData as ExamData);
         
         // Fetch question IDs from exam_questions table
         const { data: questionLinks, error: questionsError } = await supabase
           .from('exam_questions')
-          .select('question_id')
-          .eq('exam_id', examId);
+          .select('question_id, order_number')
+          .eq('exam_id', examId)
+          .order('order_number');
             
         if (questionsError) {
           console.error("Error fetching exam questions:", questionsError);
@@ -102,6 +124,22 @@ export const useExam = (
           console.log(`Found ${foundQuestions.length} questions from database`);
         } else {
           console.log("No questions found in database for this exam");
+          
+          // If using question pool, try to extract questions from there
+          if (transformedExam.useQuestionPool && transformedExam.questionPool) {
+            console.log("Exam uses question pool:", transformedExam.questionPool);
+            // We'll display potential pool questions in preview mode
+            // This is just for display - actual questions will be selected during exam taking
+            const poolSubjectIds = transformedExam.questionPool.subjects.map(
+              (subject: { subjectId: string }) => subject.subjectId
+            );
+            
+            foundQuestions = questions.filter(q => 
+              poolSubjectIds.includes(q.subject_id || q.subjectId)
+            ).slice(0, transformedExam.questionPool.totalQuestions || 10);
+            
+            console.log(`Selected ${foundQuestions.length} questions from pool`);
+          }
         }
         
         // Try to get questions from the provided getExamWithQuestions function as a fallback
