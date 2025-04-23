@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { Exam } from "@/types/exam.types";
+import { Exam, ExamStatus } from "@/types/exam.types";
 import { Question } from "@/types/question.types";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,7 +67,7 @@ export const useExam = (
           timeLimit: examData.time_limit,
           passingScore: examData.passing_score,
           shuffleQuestions: examData.shuffle_questions,
-          status: examData.status,
+          status: examData.status as ExamStatus, // Cast string to ExamStatus enum
           questions: [],
           createdAt: new Date(examData.created_at),
           updatedAt: new Date(examData.updated_at),
