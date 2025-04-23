@@ -50,7 +50,7 @@ export const createExamInApi = async (data: ExamFormData): Promise<string | null
         console.log("Inserting exam questions:", examQuestions);
         
         // Insert all exam questions
-        const { error: questionsError } = await supabase
+        const { data: questionData, error: questionsError } = await supabase
           .from('exam_questions')
           .insert(examQuestions);
           

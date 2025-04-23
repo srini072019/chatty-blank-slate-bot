@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface AssignmentResult {
   success: boolean;
@@ -14,66 +15,149 @@ export const assignExamToCandidates = async (
   try {
     console.log(`Assigning exam ${examId} to candidates for course ${courseId}, published: ${published}`);
     
-    // Skip assignment if the exam is not published
-    if (!published) {
-      console.log("Exam is not published, skipping candidate assignment");
-      return { 
-        success: true,
-        message: "Exam is not published, no candidates were assigned" 
-      };
+    // Get exam details to determine initial status
+    const { data: examData, error: examError } = await supabase
+      .from('exams')
+      .select('start_date, end_date')
+      .eq('id', examId)
+      .single();
+      
+    if (examError) {
+      console.error("Error fetching exam details:", examError);
+      throw examError;
     }
-
-    // Get candidates enrolled in this course
-    const { data: enrollments, error: enrollmentError } = await supabase
+    
+    // Get all candidates enrolled in the course
+    const { data: enrollments, error: enrollmentsError } = await supabase
       .from('course_enrollments')
       .select('user_id')
       .eq('course_id', courseId);
-      
-    if (enrollmentError) {
-      console.error("Error fetching course enrollments:", enrollmentError);
-      return { 
-        success: false, 
-        message: "Failed to fetch course enrollments" 
-      };
+    
+    if (enrollmentsError) {
+      console.error("Error fetching course enrollments:", enrollmentsError);
+      throw enrollmentsError;
     }
     
-    console.log(`Found ${enrollments?.length || 0} enrolled candidates`);
+    console.log(`Found ${enrollments?.length || 0} enrollments for course:`, courseId);
     
     if (!enrollments || enrollments.length === 0) {
-      return { 
-        success: true, 
-        message: "No candidates are enrolled in this course" 
+      console.log("No candidates enrolled in this course");
+      return {
+        success: true,
+        message: "No candidates are enrolled in this course"
       };
     }
     
-    // Create assignments for each enrolled user
-    const assignments = enrollments.map(enrollment => ({
-      exam_id: examId,
-      candidate_id: enrollment.user_id,
-      status: 'scheduled', // Initialize as scheduled
-      assigned_at: new Date().toISOString(),
-    }));
+    // Determine exam status based on dates and whether it's published
+    const now = new Date();
+    const startDate = examData.start_date ? new Date(examData.start_date) : null;
     
-    console.log(`Creating ${assignments.length} exam assignments`);
+    // Default to 'pending' if not published
+    let initialStatus: 'pending' | 'scheduled' | 'available' | 'completed' = 'pending';
     
-    // Insert assignments
-    const { error: assignmentError } = await supabase
+    // If published, set to 'available' or 'scheduled' based on start date
+    if (published) {
+      initialStatus = startDate && startDate > now ? 'scheduled' : 'available';
+    }
+    
+    console.log(`Using initial assignment status: ${initialStatus}`);
+    
+    // First check if assignments already exist to avoid duplicates
+    const { data: existingAssignments, error: checkError } = await supabase
       .from('exam_candidate_assignments')
-      .insert(assignments);
+      .select('candidate_id')
+      .eq('exam_id', examId);
       
-    if (assignmentError) {
-      console.error("Error creating exam assignments:", assignmentError);
+    if (checkError) {
+      console.error("Error checking existing assignments:", checkError);
+      throw checkError;
+    }
+    
+    // Filter out candidates that already have assignments
+    const existingCandidateIds = existingAssignments?.map(a => a.candidate_id) || [];
+    console.log("Existing assignment candidate IDs:", existingCandidateIds);
+    
+    const newAssignments = enrollments
+      .filter(e => !existingCandidateIds.includes(e.user_id))
+      .map(enrollment => ({
+        exam_id: examId,
+        candidate_id: enrollment.user_id,
+        status: initialStatus,
+        assigned_at: new Date().toISOString()
+      }));
+    
+    if (newAssignments.length === 0) {
+      console.log("All candidates already have assignments for this exam");
+      
+      // Update existing assignments based on publish status
+      if (published) {
+        const { error: updateError } = await supabase
+          .from('exam_candidate_assignments')
+          .update({ status: initialStatus })
+          .eq('exam_id', examId);
+          
+        if (updateError) {
+          console.error("Error updating existing assignments:", updateError);
+          return { 
+            success: false, 
+            message: "Failed to update existing assignments" 
+          };
+        }
+        
+        console.log(`Updated ${existingCandidateIds.length} assignments to status: ${initialStatus}`);
+      }
+      
+      return { 
+        success: true,
+        message: "Existing assignments were updated" 
+      };
+    }
+    
+    console.log(`Creating ${newAssignments.length} new assignments with status: ${initialStatus}`);
+    
+    // Try batch insert with detailed logging
+    try {
+      const { data, error: assignmentError } = await supabase
+        .from('exam_candidate_assignments')
+        .insert(newAssignments);
+      
+      if (assignmentError) {
+        console.error("Error assigning exam to candidates:", assignmentError);
+        throw assignmentError;
+      }
+      
+      console.log(`Successfully assigned exam to ${newAssignments.length} new candidates`);
+      
+      // If we're publishing, also update any existing assignments
+      if (published && existingCandidateIds.length > 0) {
+        const { error: updateError } = await supabase
+          .from('exam_candidate_assignments')
+          .update({ status: initialStatus })
+          .eq('exam_id', examId)
+          .in('candidate_id', existingCandidateIds);
+          
+        if (updateError) {
+          console.error("Error updating existing assignments:", updateError);
+          return { 
+            success: true, 
+            message: `Assigned to ${newAssignments.length} new candidates but failed to update existing ones` 
+          };
+        }
+        
+        console.log(`Updated ${existingCandidateIds.length} existing assignments to status: ${initialStatus}`);
+      }
+      
+      return { 
+        success: true,
+        message: `Exam assigned to ${newAssignments.length} candidates` 
+      };
+    } catch (error) {
+      console.error("Error in exam assignment:", error);
       return { 
         success: false, 
-        message: `Failed to assign exam to candidates: ${assignmentError.message}` 
+        message: `Failed to assign exam to candidates: ${(error as Error).message}` 
       };
     }
-    
-    console.log(`Successfully assigned exam to ${assignments.length} candidates`);
-    return { 
-      success: true,
-      message: `Assigned exam to ${assignments.length} candidates` 
-    };
   } catch (error) {
     console.error("Error in assignExamToCandidates:", error);
     return { 
