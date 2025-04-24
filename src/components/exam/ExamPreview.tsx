@@ -32,7 +32,7 @@ const ExamPreview = ({ questions, useQuestionPool, totalPoolQuestions }: ExamPre
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[500px] pr-4">
-          {questions.length > 0 ? (
+          {questions && questions.length > 0 ? (
             <div className="space-y-6">
               {questions.map((question, index) => (
                 <div key={question.id}>

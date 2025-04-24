@@ -59,18 +59,22 @@ export const useExam = (
   const [examQuestions, setExamQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadAttempted, setLoadAttempted] = useState(false);
 
   useEffect(() => {
     const loadExam = async () => {
       if (!examId) {
-        // If no examId is provided, don't try to load anything
-        // This is useful for preview mode where we pass data directly
         setIsLoading(false);
         return;
       }
       
+      // Prevent duplicate loads
+      if (loadAttempted) return;
+      setLoadAttempted(true);
+      
       try {
         setIsLoading(true);
+        console.log("Loading exam with ID:", examId);
         
         // First, get the exam details
         const { data: examData, error: examError } = await supabase
@@ -82,7 +86,6 @@ export const useExam = (
         if (examError) {
           console.error("Error fetching exam:", examError);
           setError("Exam not found");
-          toast.error("Exam not found");
           setIsLoading(false);
           return;
         }
@@ -90,7 +93,6 @@ export const useExam = (
         if (!examData) {
           console.error(`Exam not found with ID: ${examId}`);
           setError("Exam not found");
-          toast.error("Exam not found");
           setIsLoading(false);
           return;
         }
@@ -135,7 +137,7 @@ export const useExam = (
             );
             
             foundQuestions = questions.filter(q => 
-              poolSubjectIds.includes(q.subjectId)
+              poolSubjectIds.includes(q.subjectId)  // Fixed: using subjectId instead of subject_id
             ).slice(0, transformedExam.questionPool.totalQuestions || 10);
             
             console.log(`Selected ${foundQuestions.length} questions from pool`);
@@ -158,14 +160,13 @@ export const useExam = (
       } catch (error) {
         console.error("Error loading exam:", error);
         setError("Failed to load exam");
-        toast.error("Failed to load exam");
       } finally {
         setIsLoading(false);
       }
     };
 
     loadExam();
-  }, [examId, getExamWithQuestions, questions]);
+  }, [examId, getExamWithQuestions, questions, loadAttempted]);
 
   return { exam, examQuestions, isLoading, error };
 };
