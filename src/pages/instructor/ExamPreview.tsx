@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import ExamPage from "@/pages/candidate/ExamPage";
 import { useEffect } from "react";
+import ExamPreview from "@/components/exam/ExamPreview";
 
-const ExamPreview = () => {
+const ExamPreviewPage = () => {
   const { examId } = useParams<{ examId: string }>();
   const navigate = useNavigate();
   const { questions } = useQuestions();
@@ -74,19 +75,25 @@ const ExamPreview = () => {
         
         <div className="bg-white p-4 rounded-lg shadow-sm border mb-4">
           <p className="text-amber-600 font-medium">
-            This is a preview of how candidates will see the exam. You can interact with the exam as if you were a candidate, but no results will be saved.
+            This is a preview of how the exam will appear to candidates.
           </p>
         </div>
         
-        <ExamPage 
-          isPreview={true} 
-          previewExamId={exam.id}
-          previewExam={exam}
-          previewExamQuestions={examQuestions}
+        {/* Use our ExamPreview component instead of ExamPage */}
+        <ExamPreview 
+          questions={examQuestions} 
+          useQuestionPool={exam.useQuestionPool}
+          totalPoolQuestions={exam.questionPool?.totalQuestions}
         />
+        
+        <div className="mt-6 flex justify-end">
+          <Button onClick={() => navigate("/instructor/exams")}>
+            Back to Exams
+          </Button>
+        </div>
       </div>
     </InstructorLayout>
   );
 };
 
-export default ExamPreview;
+export default ExamPreviewPage;
