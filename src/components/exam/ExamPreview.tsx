@@ -21,7 +21,7 @@ const ExamPreview = ({ questions, useQuestionPool, totalPoolQuestions }: ExamPre
           {useQuestionPool && totalPoolQuestions ? ` from pool of ${totalPoolQuestions}` : ""})
         </CardTitle>
         {useQuestionPool && (
-          <Alert variant="info" className="mt-2">
+          <Alert variant="default" className="mt-2">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               This exam uses a question pool. {totalPoolQuestions || questions.length} questions will be 

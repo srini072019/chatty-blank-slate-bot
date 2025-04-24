@@ -135,7 +135,7 @@ export const useExam = (
             );
             
             foundQuestions = questions.filter(q => 
-              poolSubjectIds.includes(q.subject_id || q.subjectId)
+              poolSubjectIds.includes(q.subjectId)
             ).slice(0, transformedExam.questionPool.totalQuestions || 10);
             
             console.log(`Selected ${foundQuestions.length} questions from pool`);
