@@ -36,7 +36,7 @@ export const createExamInApi = async (data: ExamFormData): Promise<string | null
     console.log("Exam created:", examData);
     
     // Insert question associations if not using question pool
-    if (!data.useQuestionPool && data.questions.length > 0) {
+    if (!data.useQuestionPool && data.questions && data.questions.length > 0) {
       console.log("Adding questions to exam:", data.questions);
       
       // Prepare the questions data with order numbers
@@ -49,16 +49,21 @@ export const createExamInApi = async (data: ExamFormData): Promise<string | null
       console.log("Inserting exam questions:", examQuestions);
       
       // Insert all exam questions
-      const { error: questionsError } = await supabase
+      const { data: questionsData, error: questionsError } = await supabase
         .from('exam_questions')
-        .insert(examQuestions);
+        .insert(examQuestions)
+        .select();
         
       if (questionsError) {
         console.error("Error adding questions to exam:", questionsError);
         toast.warning("Exam created but there was an issue adding questions");
       } else {
-        console.log(`Successfully added ${examQuestions.length} questions to exam.`);
+        console.log(`Successfully added ${questionsData?.length || 0} questions to exam.`);
       }
+    } else if (data.useQuestionPool) {
+      console.log("Using question pool. Questions will be selected dynamically at exam time.");
+    } else {
+      console.log("No questions provided for exam");
     }
     
     try {
