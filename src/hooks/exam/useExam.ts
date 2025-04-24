@@ -111,14 +111,13 @@ export const useExam = (
           console.error("Error fetching exam questions:", questionsError);
         }
         
-        let questionIds: string[] = [];
         let foundQuestions: Question[] = [];
         
         if (questionLinks && questionLinks.length > 0) {
           console.log("Found question links in database:", questionLinks);
           
           // Extract question IDs and update the exam object
-          questionIds = questionLinks.map(q => q.question_id);
+          const questionIds = questionLinks.map(q => q.question_id);
           transformedExam.questions = questionIds;
           
           // Find matching questions in our questions array
@@ -130,17 +129,26 @@ export const useExam = (
           // If using question pool, try to extract questions from there
           if (transformedExam.useQuestionPool && transformedExam.questionPool) {
             console.log("Exam uses question pool:", transformedExam.questionPool);
-            // We'll display potential pool questions in preview mode
-            // This is just for display - actual questions will be selected during exam taking
+            
+            // Get all subject IDs from the question pool
             const poolSubjectIds = transformedExam.questionPool.subjects.map(
-              (subject: { subjectId: string }) => subject.subjectId
+              subject => subject.subjectId
             );
             
-            foundQuestions = questions.filter(q => 
-              poolSubjectIds.includes(q.subjectId)  // Fixed: using subjectId instead of subject_id
-            ).slice(0, transformedExam.questionPool.totalQuestions || 10);
+            // Filter available questions to just those from subjects in the pool
+            const availablePoolQuestions = questions.filter(q => 
+              poolSubjectIds.includes(q.subjectId)
+            );
             
-            console.log(`Selected ${foundQuestions.length} questions from pool`);
+            console.log(`Found ${availablePoolQuestions.length} available questions from pool subjects`);
+            
+            // Take up to the specified number of questions for preview
+            const totalQuestionsNeeded = transformedExam.questionPool.totalQuestions || 
+              transformedExam.questionPool.subjects.reduce((sum, s) => sum + s.count, 0);
+              
+            foundQuestions = availablePoolQuestions.slice(0, totalQuestionsNeeded);
+            
+            console.log(`Selected ${foundQuestions.length} questions from pool for preview`);
           }
         }
         

@@ -7,27 +7,43 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import ExamPreview from "@/components/exam/ExamPreview";
+import { toast } from "sonner";
 
 const ExamPreviewPage = () => {
   const { examId } = useParams<{ examId: string }>();
   const navigate = useNavigate();
-  const { questions } = useQuestions();
+  const { questions, fetchQuestions } = useQuestions();
   const { getExamWithQuestions } = useExams();
-  const [isFetching, setIsFetching] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
+  
+  // First fetch questions to ensure we have the latest data
+  useEffect(() => {
+    const loadInitialData = async () => {
+      setIsFetching(true);
+      await fetchQuestions();
+      setIsFetching(false);
+    };
+    
+    loadInitialData();
+  }, [fetchQuestions]);
+  
+  // Then use the useExam hook to get exam details and questions
   const { exam, examQuestions, isLoading, error } = useExam(
     examId,
     getExamWithQuestions,
     questions
   );
 
-  // We've removed the fetchExams call that was causing the refresh loop
-  // and replaced it with a more focused approach
   const handleBackClick = useCallback(() => {
     navigate("/instructor/exams");
   }, [navigate]);
 
   console.log("ExamPreview - render with exam:", exam?.id);
   console.log("ExamPreview - questions count:", examQuestions?.length);
+  
+  if (error) {
+    toast.error(error);
+  }
 
   if (isLoading || isFetching) {
     return (
@@ -39,7 +55,7 @@ const ExamPreviewPage = () => {
     );
   }
 
-  if (error || !exam) {
+  if (!exam) {
     return (
       <InstructorLayout>
         <div className="space-y-6">
