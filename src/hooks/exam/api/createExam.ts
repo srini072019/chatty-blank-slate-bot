@@ -51,14 +51,13 @@ export const createExamInApi = async (data: ExamFormData): Promise<string | null
       // Insert all exam questions
       const { data: questionsData, error: questionsError } = await supabase
         .from('exam_questions')
-        .insert(examQuestions)
-        .select();
+        .insert(examQuestions);
         
       if (questionsError) {
         console.error("Error adding questions to exam:", questionsError);
         toast.warning("Exam created but there was an issue adding questions");
       } else {
-        console.log(`Successfully added ${questionsData?.length || 0} questions to exam.`);
+        console.log(`Successfully added ${examQuestions.length} questions to exam.`);
       }
     } else if (data.useQuestionPool) {
       console.log("Using question pool. Questions will be selected dynamically at exam time.");

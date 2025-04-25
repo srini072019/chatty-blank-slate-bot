@@ -14,18 +14,19 @@ const ExamPreviewPage = () => {
   const navigate = useNavigate();
   const { questions, fetchQuestions } = useQuestions();
   const { getExamWithQuestions } = useExams();
-  const [isFetching, setIsFetching] = useState(true);
+  const [dataFetched, setDataFetched] = useState(false);
   
   // First fetch questions to ensure we have the latest data
   useEffect(() => {
     const loadInitialData = async () => {
-      setIsFetching(true);
-      await fetchQuestions();
-      setIsFetching(false);
+      if (!dataFetched) {
+        await fetchQuestions();
+        setDataFetched(true);
+      }
     };
     
     loadInitialData();
-  }, [fetchQuestions]);
+  }, [fetchQuestions, dataFetched]);
   
   // Then use the useExam hook to get exam details and questions
   const { exam, examQuestions, isLoading, error } = useExam(
@@ -45,7 +46,7 @@ const ExamPreviewPage = () => {
     toast.error(error);
   }
 
-  if (isLoading || isFetching) {
+  if (isLoading || !dataFetched) {
     return (
       <InstructorLayout>
         <div className="flex items-center justify-center h-64">

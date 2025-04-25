@@ -53,16 +53,17 @@ export const updateExamInApi = async (id: string, data: ExamFormData): Promise<b
         order_number: index + 1 // Maintain question order
       }));
       
-      const { data: insertedQuestions, error: questionsError } = await supabase
+      console.log("Inserting exam questions:", examQuestions);
+      
+      const { error: questionsError } = await supabase
         .from('exam_questions')
-        .insert(examQuestions)
-        .select();
+        .insert(examQuestions);
         
       if (questionsError) {
         console.error("Error updating exam questions:", questionsError);
         toast.warning("Exam updated but there was an issue updating questions");
       } else {
-        console.log(`Successfully updated ${insertedQuestions?.length || 0} exam questions.`);
+        console.log(`Successfully updated ${examQuestions.length} exam questions.`);
       }
     }
 

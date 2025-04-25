@@ -109,6 +109,9 @@ export const useExam = (
             
         if (questionsError) {
           console.error("Error fetching exam questions:", questionsError);
+          setError("Failed to load exam questions");
+          setIsLoading(false);
+          return;
         }
         
         let foundQuestions: Question[] = [];
@@ -131,31 +134,33 @@ export const useExam = (
             console.log("Exam uses question pool:", transformedExam.questionPool);
             
             // Get all subject IDs from the question pool
-            const poolSubjectIds = transformedExam.questionPool.subjects.map(
-              subject => subject.subjectId
-            );
+            const poolSubjectIds = transformedExam.questionPool.subjects ?
+              transformedExam.questionPool.subjects.map(subject => subject.subjectId) : [];
             
-            // Filter available questions to just those from subjects in the pool
-            const availablePoolQuestions = questions.filter(q => 
-              poolSubjectIds.includes(q.subjectId)
-            );
-            
-            console.log(`Found ${availablePoolQuestions.length} available questions from pool subjects`);
-            
-            // Take up to the specified number of questions for preview
-            const totalQuestionsNeeded = transformedExam.questionPool.totalQuestions || 
-              transformedExam.questionPool.subjects.reduce((sum, s) => sum + s.count, 0);
+            if (poolSubjectIds.length > 0) {
+              // Filter available questions to just those from subjects in the pool
+              const availablePoolQuestions = questions.filter(q => 
+                poolSubjectIds.includes(q.subjectId)
+              );
               
-            foundQuestions = availablePoolQuestions.slice(0, totalQuestionsNeeded);
-            
-            console.log(`Selected ${foundQuestions.length} questions from pool for preview`);
+              console.log(`Found ${availablePoolQuestions.length} available questions from pool subjects`);
+              
+              // Take up to the specified number of questions for preview
+              const totalQuestionsNeeded = transformedExam.questionPool.totalQuestions || 
+                (transformedExam.questionPool.subjects ? 
+                  transformedExam.questionPool.subjects.reduce((sum, s) => sum + s.count, 0) : 0);
+                
+              foundQuestions = availablePoolQuestions.slice(0, totalQuestionsNeeded);
+              
+              console.log(`Selected ${foundQuestions.length} questions from pool for preview`);
+            }
           }
         }
         
         // Try to get questions from the provided getExamWithQuestions function as a fallback
         if (foundQuestions.length === 0 && transformedExam) {
           const { examQuestions: fallbackQuestions } = getExamWithQuestions(examId, questions);
-          if (fallbackQuestions.length > 0) {
+          if (fallbackQuestions && fallbackQuestions.length > 0) {
             console.log(`Found ${fallbackQuestions.length} questions from local state`);
             foundQuestions = fallbackQuestions;
           }

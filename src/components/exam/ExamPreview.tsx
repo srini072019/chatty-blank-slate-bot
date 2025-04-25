@@ -5,6 +5,7 @@ import QuestionPreview from "@/components/question/QuestionPreview";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Info } from "lucide-react";
+import { useEffect } from "react";
 
 interface ExamPreviewProps {
   questions: Question[];
@@ -16,6 +17,16 @@ const ExamPreview = ({ questions, useQuestionPool, totalPoolQuestions }: ExamPre
   const questionCount = questions?.length || 0;
   const poolSize = totalPoolQuestions || questionCount;
   
+  // For debugging purposes
+  useEffect(() => {
+    console.log("ExamPreview rendered with:", {
+      questionCount,
+      useQuestionPool,
+      totalPoolQuestions: totalPoolQuestions || "not specified",
+      questions: questions?.map(q => q.id) || []
+    });
+  }, [questions, useQuestionPool, totalPoolQuestions, questionCount]);
+
   return (
     <Card>
       <CardHeader>
